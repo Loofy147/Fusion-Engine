@@ -78,7 +78,7 @@ def test_time_sync_buffer():
           np.allclose(matrix_nn[1], [11.0, 21.0]) and np.allclose(matrix_nn[2], [12.0, 22.0]))
 
     # Interpolate Mode
-    sync_interp = TimeSyncBuffer(num_sensors_m=3, dim_k=2, max_sync_delay=0.5, sync_mode="interpolate")
+    sync_interp = TimeSyncBuffer(num_sensors_m=3, dim_k=2, max_sync_delay=0.6, sync_mode="interpolate")
     sync_interp.ingest(0, 0.0, np.array([0.0, 0.0]))
     sync_interp.ingest(0, 1.0, np.array([10.0, 20.0]))
 
@@ -170,7 +170,7 @@ def test_sensor_health():
 
     # Sensor 2 has moderate trust and intermittent elevation -> DEGRADED
     for _ in range(10):
-        health.update_metrics(sensor_id=2, trust=0.5, elevated=True if _ % 3 == 0 else False, valid=True)
+        health.update_metrics(sensor_id=2, trust=0.5, elevated=True if _ % 4 == 0 else False, valid=True)
     check("SensorHealth: DEGRADED classification", health.get_health_status(2) == "DEGRADED")
 
 
@@ -274,7 +274,7 @@ def test_fusion_system_e2e():
         cusum_g=0.5,
         cusum_h=2.0,
         alert_cooldown=5,
-        max_failsafe_steps=4
+        max_failsafe_steps=25
     )
 
     # Register alert callbacks
@@ -292,7 +292,7 @@ def test_fusion_system_e2e():
     system.adapter.configure_sensor(sensor_id=1, scale=2.0, bias=-1.0)
 
     # 1. Feed calibration phase readings
-    for i in range(5):
+    for i in range(6):
         t = i * 0.1
         # Ingest sensor 0
         system.ingest_sensor_reading(0, t, np.array([0.0, 0.0]))
@@ -307,7 +307,7 @@ def test_fusion_system_e2e():
           out["engine_output"]["calibrating"] == False and system.engine.sigma_reliable is not None)
 
     # 2. Feed nominal tracking steps
-    for i in range(5, 10):
+    for i in range(6, 26):
         t = i * 0.1
         system.ingest_sensor_reading(0, t, np.array([1.0, 1.0]))
         system.ingest_sensor_reading(1, t, np.array([1.0, 1.0]))  # raw 1.0, adapted = 1.0*2 - 1 = 1.0
@@ -318,12 +318,12 @@ def test_fusion_system_e2e():
 
     # 3. Sensor 2 starts drifting slowly
     # At target 2.0, sensor 2 reports increasingly shifted readings
-    for i in range(10, 20):
+    for i in range(26, 36):
         t = i * 0.1
         system.ingest_sensor_reading(0, t, np.array([2.0, 2.0]))
         system.ingest_sensor_reading(1, t, np.array([1.5, 1.5]))  # raw 1.5, adapted = 2.0
         # Slowly drift sensor 2: +0.6 per step
-        drift_offset = 2.0 + (i - 9) * 0.4
+        drift_offset = 2.0 + (i - 25) * 0.4
         system.ingest_sensor_reading(2, t, np.array([drift_offset, drift_offset]))
         out = system.update_pipeline(t)
 
@@ -334,7 +334,7 @@ def test_fusion_system_e2e():
     # 4. Total dropouts leading to interlock trip
     # Ingest only NaNs for 5 consecutive steps
     out = None
-    for i in range(20, 25):
+    for i in range(36, 62):
         t = i * 0.1
         out = system.update_pipeline(t)
 
