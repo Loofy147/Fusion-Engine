@@ -44,7 +44,9 @@ def ensure_dataset_downloaded(dataset_name: str, target_file: str):
     print(f"Dataset file '{target_file}' not found. Downloading '{dataset_name}' from Kaggle...")
 
     # Setup Kaggle API Token from environment, or use default provided by user
-    token = os.environ.get("KAGGLE_API_TOKEN", "KGAT_bff75c22db1d4015c7d5825f9902408b")
+    token = os.environ.get("KAGGLE_API_TOKEN")
+    if not token:
+        raise SystemExit("Set KAGGLE_API_TOKEN in the environment; do not hardcode credentials.")
     os.environ["KAGGLE_API_TOKEN"] = token
 
     # Write to ~/.kaggle/access_token which the Kaggle client reads automatically
